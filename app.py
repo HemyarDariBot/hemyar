@@ -2,33 +2,52 @@ import os
 import threading
 from flask import Flask
 import telebot
+from openai import OpenAI
 
-TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 @app.route("/")
 def home():
-    return "Hemyar bot is running!"
+    return "Hemyar AI bot is running!"
 
 @bot.message_handler(commands=["start"])
 def start(message):
     bot.reply_to(
         message,
-        "سلام! به همیار خوش آمدی.\nپیامت را بفرست تا پاسخ بدهم."
+        "سلام! من همیار هوشمند دری هستم.\nهر پرسشی داری بفرست."
     )
 
 @bot.message_handler(commands=["help"])
 def help_command(message):
     bot.reply_to(
         message,
-        "دستورهای موجود:\n/start - شروع ربات\n/help - راهنما"
+        "پیامت را به زبان دری بفرست تا پاسخ بدهم."
     )
 
 @bot.message_handler(func=lambda message: True)
-def reply_to_message(message):
-    bot.reply_to(message, "پیامت را دریافت کردم: " + message.text)
+def answer(message):
+    try:
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            instructions=(
+                "تو یک دستیار مفید و مؤدب هستی. "
+                "همیشه به زبان دری ساده و طبیعی پاسخ بده."
+            ),
+            input=message.text
+        )
+
+        bot.reply_to(message, response.output_text)
+
+    except Exception:
+        bot.reply_to(
+            message,
+            "در پاسخ‌دادن مشکل پیش آمد. لطفاً دوباره تلاش کن."
+        )
 
 def run_bot():
     bot.delete_webhook()
